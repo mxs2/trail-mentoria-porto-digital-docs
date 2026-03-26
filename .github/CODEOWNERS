@@ -1,0 +1,7 @@
+# CODEOWNERS
+# Regra base: você (maintainer) é owner de todo o repositório.
+* @AdemirSJRP
+
+# Pasta de contribuições dos alunos.
+# Mantida com owner explícito para revisão centralizada.
+/entregas/** @AdemirSJRP
