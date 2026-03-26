@@ -1,0 +1,68 @@
+name: Guard - alunos somente em /entregas
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  path-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate changed files by actor
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const ownerLogin = 'AdemirSJRP';
+            const exemptActors = new Set([
+              ownerLogin,
+              'github-actions[bot]',
+              'dependabot[bot]'
+            ]);
+
+            const actor = context.actor;
+            const pr = context.payload.pull_request;
+
+            if (!pr) {
+              core.info('No pull request context. Skipping.');
+              return;
+            }
+
+            if (exemptActors.has(actor)) {
+              core.info(`Actor ${actor} is exempt from folder restriction.`);
+              return;
+            }
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100
+            });
+
+            const isAllowed = (filePath) => {
+              return filePath === 'entregas' || filePath.startsWith('entregas/');
+            };
+
+            const forbidden = files.filter(f => !isAllowed(f.filename));
+
+            if (forbidden.length > 0) {
+              const sample = forbidden.slice(0, 20).map(f => `- ${f.filename}`).join('\n');
+              core.setFailed(
+                [
+                  '❌ Este PR altera arquivos fora de /entregas.',
+                  'Para alunos, somente mudanças em /entregas/** são permitidas.',
+                  '',
+                  'Arquivos bloqueados:',
+                  sample,
+                  forbidden.length > 20 ? `... e mais ${forbidden.length - 20}` : ''
+                ].join('\n')
+              );
+              return;
+            }
+
+            core.info('✅ PR dentro da pasta permitida (/entregas).');
